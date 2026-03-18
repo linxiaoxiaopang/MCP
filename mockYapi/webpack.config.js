@@ -1,5 +1,6 @@
 const path = require('path')
 const nodeExternals = require('webpack-node-externals')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 
 module.exports = {
   // ✅ 设置为 Node 环境
@@ -49,20 +50,33 @@ module.exports = {
       },
       {
         test: /\.js$/,
-        // ✅ 只转译自己的代码，排除 node_modules
         include: path.resolve(__dirname, 'background'),
         exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: {
             presets: [
-              ['@babel/preset-env', {
-                targets: { node: 'current' }  // ✅ 根据当前 Node 版本自动配置
+              [
+                '@babel/preset-env',
+                {
+                  targets: { node: 'current' }
+                }
+              ]
+            ],
+            // 新增：移除 console 插件配置
+            plugins: [
+              // 开发环境保留 console.error/console.warn，生产环境全部移除
+              ['transform-remove-console', {
+                exclude: ['error', 'warn'] // 可选：保留 error/warn
               }]
             ]
           }
         }
       }
     ]
-  }
+  },
+
+  plugins: [
+    new CleanWebpackPlugin() // 清理旧打包文件
+  ]
 }
