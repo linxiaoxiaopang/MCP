@@ -1,5 +1,5 @@
-const path = require('path');
-const nodeExternals = require('webpack-node-externals');
+const path = require('path')
+const nodeExternals = require('webpack-node-externals')
 
 module.exports = {
   // ✅ 设置为 Node 环境
@@ -13,7 +13,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, './background/dist'),
     filename: 'main.js',  // ✅ 添加输出文件名
-    libraryTarget: 'commonjs2',  // ✅ Node 模块格式
+    libraryTarget: 'commonjs2'  // ✅ Node 模块格式
   },
 
   // ✅ 排除 node_modules，但保留 mockjs（需要自定义 loader 处理）
@@ -21,20 +21,20 @@ module.exports = {
     nodeExternals({
       // whitelist 中的模块会被打包，其他 node_modules 不打包
       allowlist: [
-        /mockjs/,  // ✅ 确保 mockjs 被打包，以便自定义 loader 生效
+        /mockjs/  // ✅ 确保 mockjs 被打包，以便自定义 loader 生效
       ]
     }),
     // ✅ 额外排除 node: 前缀的内置模块
-    function(context, request, callback) {
+    function (context, request, callback) {
       if (/^node:/.test(request)) {
-        return callback(null, 'commonjs ' + request);
+        return callback(null, 'commonjs ' + request)
       }
-      callback();
+      callback()
     }
   ],
 
   resolve: {
-    extensions: ['.js', '.json'],
+    extensions: ['.js', '.json']
   },
 
   module: {
@@ -65,4 +65,4 @@ module.exports = {
       }
     ]
   }
-};
+}
