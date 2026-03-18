@@ -3,12 +3,10 @@ import Mock from 'mockjs'
 
 import {
   createFormByDeepMapData,
-  createFormColumns,
   fillForeignKeyList, formatMockData,
   getMockjsSyntax
 } from './utils'
 
-const NO_LOGIN_CODE = 40011
 let cookieList = []
 const service = axios.create({
   baseURL: 'http://192.168.10.245:3000'
@@ -19,21 +17,12 @@ export class MockClass {
 
   }
 
-  awaitWrap(promise) {
-    if (!(promise instanceof Promise)) return [null, promise]
-    return promise.then((data) => [null, data]).catch((err) => [err, null])
-  }
-
-  async awaitFormResolve(promise) {
-    return (await this.awaitWrap(promise))[1]
-  }
-
   parseUrl(url) {
-    const splitData = url.split('/').filter(Boolean)
-    const basePath = '/' + splitData.shift()
+    const match = url.match(/project\/(\d+)\/interface\/api\/(\d+)/)
+    if (!match) throw 'URL格式不正确，应为 /project/{projectId}/interface/api/{interfaceId}'
     return {
-      basePath,
-      path: '/' + splitData.join('/')
+      projectId: match[1],
+      interfaceId: match[2]
     }
   }
 
@@ -59,55 +48,16 @@ export class MockClass {
     return this.handleAxiosData(res)
   }
 
-  async getProductList(projectId) {
-    if (!projectId) throw `productId 不存在`
-    const res = await service({
-      method: 'get',
-      url: `/api/interface/list_menu?project_id=${projectId}`,
-      headers: {
-        Cookie: cookieList.join(';')
-      }
-    })
-    return this.handleAxiosData(res)
-  }
-
-  async getYapiId(data) {
-    const { url, projectId } = data
-    let [err, res] = await this.getProductList(projectId)
-    if (res == NO_LOGIN_CODE) {
-      const [err1, res1] = await this.login()
-      console.log('res1', res1)
-      if (err1) throw '登录异常'
-        ;
-      [err, res] = await this.getProductList(projectId)
-      console.log('res======res', res)
-
-    }
-
-    if (err || !res) throw '接口不存在'
-    res = res || []
-    const tmpArr = []
-    res.map(item => tmpArr.push(...item.list))
-    const { path } = this.parseUrl(url)
-    const fItem = tmpArr.find(item => item.path === path)
-    if (!fItem) return ''
-    return fItem._id
-  }
-
   async getYApiData(request) {
     try {
-      const yapiId = await this.getYapiId(request.data)
-      console.log('yapiId', yapiId)
-      if (!yapiId) throw '未找到接口'
-      let [err, data] = await this.awaitFormResolve(this.getBody(yapiId))
-      if (err && data == NO_LOGIN_CODE) {
-        const [err1] = await this.login()
-        if (err1) return
-          ;
-        [err, data] = await this.awaitFormResolve(this.getBody(yapiId))
-        console.log('data', data)
-        if (err) return
+      let { url } = request.data
+      let interfaceId = null
+      if (url) {
+        const parsed = this.parseUrl(url)
+        interfaceId = parsed.interfaceId
       }
+      await this.login()
+      const data = await this.getBody(interfaceId)
       const mockDescribeJson = JSON.parse(data.res_body || '{}')
       const mockRes = this.createMockData(mockDescribeJson)
       return this.formatMockRes(mockRes, request.data)
@@ -124,7 +74,7 @@ export class MockClass {
     mockRes.message = ''
     mockRes.detailMessage = ''
     mockRes.code = 0
-    if (mockRes.page) {
+    if (mockRes.page && requestData.data && requestData.data.page) {
       mockRes.page.pageIndex = requestData.data.page.pageIndex
       mockRes.page.pageSize = requestData.data.page.pageSize
       if (mockRes.data.length <= mockRes.page.pageSize) {
@@ -136,11 +86,13 @@ export class MockClass {
 
 
   handleAxiosData(res) {
-    if (res.status !== 200 || res.data && res.data.errcode !== 0) {
-      return [true, res && res.data && res.data.errcode]
+    if (res.status !== 200) throw res.status
+    if (res.data && res.data.errcode !== 0) {
+      const errcode = res && res.data && res.data.errcode || '未知'
+      const errmsg = res && res.data && res.data.errmsg || '异常'
+      throw `${errcode}:${errmsg}`
     }
-
-    return [false, res.data.data]
+    return res.data.data
   }
 
   async login() {
@@ -152,11 +104,9 @@ export class MockClass {
         password: 'Test123456'
       }
     })
-    const [err, resData] = await this.handleAxiosData(res)
-    if (!err) {
-      cookieList = res.headers['set-cookie']
-    }
-    return [err, resData]
+    const resData = await this.handleAxiosData(res)
+    cookieList = res.headers['set-cookie']
+    return resData
   }
 }
 
