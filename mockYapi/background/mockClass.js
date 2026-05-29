@@ -48,7 +48,7 @@ export class MockClass {
     return this.handleAxiosData(res)
   }
 
-  async getYApiData(request) {
+  async mockYApiData(request) {
     try {
       let { url } = request.data
       let interfaceId = null
@@ -61,6 +61,25 @@ export class MockClass {
       const mockDescribeJson = JSON.parse(data.res_body || '{}')
       const mockRes = this.createMockData(mockDescribeJson)
       return this.formatMockRes(mockRes, request.data)
+    } catch (err) {
+      console.log('err', err)
+      return {
+        code: 0,
+        message: err
+      }
+    }
+  }
+
+  async getYApiData(request) {
+    try {
+      let { url } = request.data
+      let interfaceId = null
+      if (url) {
+        const parsed = this.parseUrl(url)
+        interfaceId = parsed.interfaceId
+      }
+      await this.login()
+      return await this.getBody(interfaceId)
     } catch (err) {
       console.log('err', err)
       return {

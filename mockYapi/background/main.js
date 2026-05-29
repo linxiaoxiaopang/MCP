@@ -19,9 +19,31 @@ const server = new McpServer(
 )
 
 server.registerTool(
-  'yApiMock',
+  'mockYApiData',
   {
-    description: 'answer hello',
+    description: 'mock yApi data',
+    inputSchema: z.object({
+      url: z.string().describe('Yapi url')
+    })
+  },
+  async (data) => {
+    const res = await instance.mockYApiData({
+      data
+    })
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(res || {})
+        }
+      ]
+    }
+  })
+
+server.registerTool(
+  'getYApiData',
+  {
+    description: 'get yApi data',
     inputSchema: z.object({
       url: z.string().describe('Yapi url')
     })
